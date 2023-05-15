@@ -12,11 +12,12 @@ STEP = 5
 def print_help():
     print('Usage : comics_splitter.py -i <inputDir> -o <outputDir>')
     print("""Options:
-    -r, --rotate : enable rotation to always have a portrait page (very usefull on E-reader)
+    --rotate-left : enable rotation to always have a portrait page (very usefull on E-reader)
+    --rotate-right : enable rotation to always have a portrait page (very usefull on E-reader)
     -d, --diago : enable diagonal split (longer processing)
     -s, --sort : smart sort on files name (Windows sort)
     -h, --help : print help
-    --draw : only draw cut area
+    -D, --draw : only draw cut area
     """)
     exit(1)
 
@@ -49,14 +50,18 @@ def search_diagonale(start, end, imageGrey, tolerance):
 
     return x1, stop
 
-def cut_panels(imageColor, polygons, rotate=False):
+def cut_panels(imageColor, polygons, rotate_left=False, rotate_right=False):
     sizeX, sizeY = imageColor.size
     part = []
     imagesOut = []
 
     if len(polygons) == 0:
-        if rotate and sizeX > sizeY:
+        if rotate_right and sizeX > sizeY:
             image = imageColor.rotate(270, expand=True)
+            if DEBUG:
+                print("Rotation !")
+        elif rotate_left and sizeX > sizeY:
+            image = imageColor.rotate(90, expand=True)
             if DEBUG:
                 print("Rotation !")
         imagesOut.append(image)
@@ -99,9 +104,14 @@ def cut_panels(imageColor, polygons, rotate=False):
             else:
                 temp = imageColor.crop(box)
 
-            if rotate:
+            if rotate_right:
                 if x1 - x0 > yDown - yUp:
                     temp = temp.rotate(270, expand=True)
+                    if DEBUG:
+                        print("Rotation !")
+            elif rotate_left:
+                if x1 - x0 > yDown - yUp:
+                    temp = temp.rotate(90, expand=True)
                     if DEBUG:
                         print("Rotation !")
             imagesOut.append(temp)
@@ -384,10 +394,12 @@ def main(argv):
     outputDir = ''
     sort = False
     diago = False
-    rotate = False
+    rotate_right = False
+    rotate_left = False
     draw = False
+
     try:
-        opts, args = getopt.getopt(argv,"hi:o:sdrw",["help", "idir=", "odir=", "sort", "diago", "rotate", "draw"])
+        opts, args = getopt.getopt(argv,"hi:o:sdrwD",["help", "idir=", "odir=", "sort", "diago", "rotate", "draw", "rotate-left", "rotate-right"])
         print(opts)
     except getopt.GetoptError:
         print_help()
@@ -402,9 +414,13 @@ def main(argv):
         elif opt in ("-d", "--diago"):
             diago = True
         elif opt in ("-r", "--rotate"):
-            rotate = True
-        elif opt == "--draw":
+            rotate_right = True
+        elif opt in ("-D", "--draw"):
             draw = True
+        elif opt == "--rotate-left":
+            rotate_left = True
+        elif opt == "--rotate-right":
+            rotate_right = True
         else:
             print_help()
 
@@ -447,7 +463,7 @@ def main(argv):
             if draw:
                 im2sav = [draw_case(case2split, im)]
             else:
-                im2sav = cut_panels(im, case2split, rotate)
+                im2sav = cut_panels(im, case2split, rotate_right=rotate_right, rotate_left=rotate_left)
             #tmps5 = time.perf_counter()
             #print("after cut %f" % (tmps5 - tmps4))
 
@@ -461,5 +477,3 @@ def main(argv):
 
 if __name__ == "__main__":
    main(sys.argv[1:])
-
-
