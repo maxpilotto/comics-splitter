@@ -325,13 +325,13 @@ def search_split(imageGrey, diago=False, verticalSplit=False, tolerance=10):
     case2split = []
     sizeX, sizeY = imageGrey.size
 
-    #tmps1 = time.clock()
+    #tmps1 = time.perf_counter()
     x_left, x_right = search_left_right_borders(imageGrey, tolerance)
-    #tmps2 = time.clock()
+    #tmps2 = time.perf_counter()
     #print("after search_left_border %f" % (tmps2 - tmps1))
 
     #x_right = search_right_border(imageGrey, tolerance)
-    #tmps3 = time.clock()
+    #tmps3 = time.perf_counter()
     #print("after search_right_border %f" % (tmps3 - tmps2))
 
     if DEBUG:
@@ -342,7 +342,7 @@ def search_split(imageGrey, diago=False, verticalSplit=False, tolerance=10):
 
     horiSplit = horizontal_cut(imageGrey, tolerance, diago)
 
-    #tmps4 = time.clock()
+    #tmps4 = time.perf_counter()
     #print("after search_horizontal %f" % (tmps4 - tmps3))
 
     if DEBUG:
@@ -362,7 +362,7 @@ def search_split(imageGrey, diago=False, verticalSplit=False, tolerance=10):
 
             case2split.append([(x_left, y0), (x_right, y1), (x_right, y2), (x_left, y3)])
 
-        #tmps444 = time.clock()
+        #tmps444 = time.perf_counter()
         #print("after tot %f" % (tmps444 - tmps1))
     return case2split
 
@@ -432,32 +432,32 @@ def main(argv):
         ext = os.path.splitext(file)[1].lower()
         if ext in [".jpg", ".png", ".jpeg"]:
             page += 1
-            tmps1 = time.clock()
+            tmps1 = time.perf_counter()
             im = Image.open("{}/{}".format(inputDir, file))
-            #tmps2 = time.clock()
+            #tmps2 = time.perf_counter()
             #print("after open %f"  % (tmps2 - tmps1))
             imGrey = im.convert("L")
-            #tmps3 = time.clock()
+            #tmps3 = time.perf_counter()
             #print("after convert %f" % (tmps3 - tmps2))
 
             case2split = search_split(imGrey, diago=diago)
-            #tmps4 = time.clock()
+            #tmps4 = time.perf_counter()
             #print("after split %f" % (tmps4 - tmps3))
             #imDraw = draw_case(case2split, im)
             if draw:
                 im2sav = [draw_case(case2split, im)]
             else:
                 im2sav = cut_panels(im, case2split, rotate)
-            #tmps5 = time.clock()
+            #tmps5 = time.perf_counter()
             #print("after cut %f" % (tmps5 - tmps4))
 
             num = 0
             for i2s in im2sav:
                 i2s.save("{}/{}_{:02}{}".format(outputDir, page, num, ext))
                 num += 1
-            #tmps6 = time.clock()
+            #tmps6 = time.perf_counter()
             #print("after save %f" % (tmps6 - tmps5))
-            print("totale = %f" % (time.clock() - tmps1))
+            print("totale = %f" % (time.perf_counter() - tmps1))
 
 if __name__ == "__main__":
    main(sys.argv[1:])
