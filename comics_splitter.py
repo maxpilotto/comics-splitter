@@ -389,6 +389,15 @@ def draw_case(boxList, imageColor, borderWidth=3):
     del imageDraw
     return imageColor
 
+def split_comic(im:Image, diago:bool, draw:bool, rotate_right:bool, rotate_left:bool):
+    imGrey = im.convert("L")
+    case2split = search_split(imGrey, diago=diago)
+
+    if draw:
+        return [draw_case(case2split, im)]
+    else:
+        return cut_panels(im, case2split, rotate_right=rotate_right, rotate_left=rotate_left)
+
 def main(argv):
     inputDir = ''
     outputDir = ''
@@ -436,8 +445,8 @@ def main(argv):
         exit()
 
     page = 0
-
     files = os.listdir(inputDir)
+    
     if sort:
         convert = lambda text: int(text) if text.isdigit() else text
         alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
@@ -450,29 +459,13 @@ def main(argv):
             page += 1
             tmps1 = time.perf_counter()
             im = Image.open("{}/{}".format(inputDir, file))
-            #tmps2 = time.perf_counter()
-            #print("after open %f"  % (tmps2 - tmps1))
-            imGrey = im.convert("L")
-            #tmps3 = time.perf_counter()
-            #print("after convert %f" % (tmps3 - tmps2))
-
-            case2split = search_split(imGrey, diago=diago)
-            #tmps4 = time.perf_counter()
-            #print("after split %f" % (tmps4 - tmps3))
-            #imDraw = draw_case(case2split, im)
-            if draw:
-                im2sav = [draw_case(case2split, im)]
-            else:
-                im2sav = cut_panels(im, case2split, rotate_right=rotate_right, rotate_left=rotate_left)
-            #tmps5 = time.perf_counter()
-            #print("after cut %f" % (tmps5 - tmps4))
-
+            im2sav = split_comic(im, diago, draw, rotate_right, rotate_left)
             num = 0
+
             for i2s in im2sav:
                 i2s.save("{}/{}_{:02}{}".format(outputDir, page, num, ext))
                 num += 1
-            #tmps6 = time.perf_counter()
-            #print("after save %f" % (tmps6 - tmps5))
+                
             print("totale = %f" % (time.perf_counter() - tmps1))
 
 if __name__ == "__main__":
