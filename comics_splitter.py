@@ -5,6 +5,9 @@ import re
 from math import ceil
 from PIL import Image, ImageDraw
 import time
+from zipfile import ZipFile
+from io import BytesIO
+from rarfile import RarFile
 
 DEBUG = True
 STEP = 5
@@ -18,6 +21,7 @@ def print_help():
     -s, --sort : smart sort on files name (Windows sort)
     -h, --help : print help
     -D, --draw : only draw cut area
+    -L, --split-limit : limits how many panels can be created from a single page
     """)
     exit(1)
 
@@ -389,7 +393,7 @@ def draw_case(boxList, imageColor, borderWidth=3):
     del imageDraw
     return imageColor
 
-def split_comic(im:Image, diago:bool, draw:bool, rotate_right:bool, rotate_left:bool):
+def split_comic(im:Image, diago:bool=False, draw:bool=False, rotate_right:bool=False, rotate_left:bool=False):
     imGrey = im.convert("L")
     case2split = search_split(imGrey, diago=diago)
 
@@ -406,9 +410,10 @@ def main(argv):
     rotate_right = False
     rotate_left = False
     draw = False
+    split_limit = 0
 
     try:
-        opts, args = getopt.getopt(argv,"hi:o:sdrwD",["help", "idir=", "odir=", "sort", "diago", "rotate", "draw", "rotate-left", "rotate-right"])
+        opts, args = getopt.getopt(argv,"hi:o:sdrwDL:",["help", "idir=", "odir=", "sort", "diago", "rotate", "draw", "rotate-left", "rotate-right", "split-limit="])
         print(opts)
     except getopt.GetoptError:
         print_help()
@@ -430,6 +435,8 @@ def main(argv):
             rotate_left = True
         elif opt == "--rotate-right":
             rotate_right = True
+        elif opt in ["-L", "--split-limit"]:
+            split_limit = int(arg) or 0
         else:
             print_help()
 
@@ -453,8 +460,11 @@ def main(argv):
         files = sorted(files, key=lambda x: alphanum_key(x))
 
     for file in files:
+        file_name = os.path.splitext(file)
+        file_abs_path = os.path.join(inputDir, file)
         print(os.path.splitext(file))
-        ext = os.path.splitext(file)[1].lower()
+        ext = file_name[1].lower()
+
         if ext in [".jpg", ".png", ".jpeg"]:
             page += 1
             tmps1 = time.perf_counter()
@@ -467,6 +477,51 @@ def main(argv):
                 num += 1
                 
             print("totale = %f" % (time.perf_counter() - tmps1))
+        elif ext in [".cbr", ".cbc", ".zip"]:
+            print('Not implemented yet')
+            sys.exit(0)
+
+            zip = RarFile(rf"{os.path.join(inputDir, file)}", 'r')
+            zip_out = ZipFile(os.path.join(outputDir, f'{file_name[0]} - Split{ext}'), 'w')
+
+            for file in zip.infolist():
+                file_name = os.path.splitext(file.filename)
+                file_data = zip.read(file)
+
+                img = Image.open(BytesIO(file_data))
+                imgs = split_comic(img, diago, draw, rotate_right, rotate_left)
+
+                for i, panel in enumerate(imgs):
+                    buf = BytesIO()
+                    panel.save(buf, 'png')
+                    zip_out.writestr(f'{file_name[0]}_{i}{file_name[1]}', buf.getvalue())
+
+            zip.close()
+            zip_out.close()
+        elif os.path.isdir(file_abs_path):
+            zip_out = ZipFile(os.path.join(outputDir, f'{file}.cbr'), 'w')
+
+            for f in os.listdir(file_abs_path):
+                file_name = os.path.splitext(f)
+
+                if file_name[1] in ['.png', '.jpg', '.jpeg']:
+                    img = Image.open(os.path.join(file_abs_path, f))
+                    imgs = split_comic(img, diago, draw, rotate_right, rotate_left)
+
+                    if split_limit > 0 and len(imgs) > split_limit:
+                        buf = BytesIO()
+                        img.save(buf, 'png')
+                        zip_out.writestr(f'{file_name[0]}{file_name[1]}', buf.getvalue())
+                    else:
+                        for i, panel in enumerate(imgs):
+                            buf = BytesIO()
+                            panel.save(buf, 'png')
+                            zip_out.writestr(f'{file_name[0]}_{i}{file_name[1]}', buf.getvalue())
+                else:
+                    print('Only images are supported')
+                    sys.exit(1)
+            
+            zip_out.close()
 
 if __name__ == "__main__":
    main(sys.argv[1:])
